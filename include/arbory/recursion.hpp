@@ -40,7 +40,7 @@ std::optional<Sol> solve_recursive(State* state, Obj primal_bound) {
     // Explore the right branch, backtrack and update primal bound.
     auto first_result = state->branch(first);
     auto best = solve_recursive<State, Sol, Obj, sense>(state, primal_bound);
-    state->backtrack(first_result);
+    state->backtrack(first, first_result);
     if (best) {
         bool cond = opt::is_improvement(
             best->get_objective_value(), primal_bound);
@@ -52,7 +52,7 @@ std::optional<Sol> solve_recursive(State* state, Obj primal_bound) {
     // Explore the alternative branch, backtrack and return best result.
     auto second_result = state->branch(second);
     auto other = solve_recursive<State, Sol, Obj, sense>(state, primal_bound);
-    state->backtrack(second_result);
+    state->backtrack(second, second_result);
     Expects((!best) || (primal_bound == best->get_objective_value()));
     if ((!best) || (other && opt::is_improvement(
             other->get_objective_value(), primal_bound)))

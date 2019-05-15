@@ -138,7 +138,7 @@ public:
     }
 
     // Revert a call to branch(DiveInclude), transitioning to the parent state.
-    void backtrack(const DiveIncludeResult& dived) {
+    void backtrack(const DiveInclude&, const DiveIncludeResult& dived) {
         // std::cout << "BACKTRACK INCLUDE" << std::endl;
         --clique_end;
         neighbours_end += dived.get_moved();
@@ -157,7 +157,7 @@ public:
 
     // Reverts a call to branch(DiveExclude), transitioning to the parent state.
     // This is always the same operation.
-    void backtrack(const DiveExcludeResult&) {
+    void backtrack(const DiveExclude&, const DiveExcludeResult&) {
         // std::cout << "BACKTRACK EXCLUDE" << std::endl;
         std::swap(*clique_end, *neighbours_end);
         ++neighbours_end;

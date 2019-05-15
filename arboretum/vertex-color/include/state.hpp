@@ -9,17 +9,34 @@
 #include <limits>
 #include <utility>
 #include <vector>
+#include <gsl/gsl_assert>
 
 #include "graph.hpp"
 
-struct MergePlan {
+struct Merge {
+    unsigned u;
+    unsigned v;
+};
+
+struct MergeResult {
     std::vector<unsigned> makeNeighboursOfU;
     std::vector<unsigned> addToClique;
 };
 
-struct BranchChoice {
+struct Difference {
     unsigned u;
     unsigned v;
+};
+
+struct DifferenceResult {};
+
+class VertexColorSol {
+    unsigned obj;
+ public:
+    explicit VertexColorSol(unsigned v) : obj(v) {}
+    unsigned get_objective_value() const {
+        return obj;
+    }
 };
 
 #ifndef NDEBUG
@@ -79,7 +96,7 @@ class Node {
         if (cliqueSize != expectCliqueSize) {
             throw std::domain_error("Clique size value is incorrect.");
         }
-        if (isComplete() != expectComplete) {
+        if (is_leaf() != expectComplete) {
             throw std::domain_error("Complete flag value is incorrect.");
         }
     }
@@ -148,10 +165,6 @@ class Node {
         return node;
     }
 
-    bool isComplete() const {
-        return (cliqueSize + mergeCount) == state.size();
-    }
-
     unsigned getMaxDSATVertex() const {
         // Return the non_clique vertex with the most neighbours.
         // Kind of awkward two-structure loop. Is there a standard
@@ -185,68 +198,8 @@ class Node {
         return u;
     }
 
-    [[gnu::always_inline]]
-    BranchChoice getBranchChoice() const  {
-        // Note that vertex indices, instead of iterators into the data
-        // structure, are used here. This is probably a performance hit
-        // for a pure backtracking algorithm, but is required if we are
-        // going to use this branching information in a different structure
-        // used by a different thread.
-        // Could provide GetBranchChoiceLocal() and GetBranchChoiceLocal()?
-        // Or a struct with a .generic() method which returns a non-iterator
-        // variant?
-        // Is it possible to prevent pointer invalidation in a reasonable
-        // way?
-        BranchChoice choice;
-        choice.v = getMaxDSATVertex();
-        choice.u = getMergeCandidate(choice.v);
-        return choice;
-    }
-
-    bool branchChoiceIsValid(const BranchChoice& choice) const {
-        const auto& nv = neighbours[choice.v];
-        return (
-            choice.u < state.size()
-            && choice.v < state.size()
-            && state[choice.u] == choice.u
-            && state[choice.v] == non_clique
-            && std::find(nv.begin(), nv.end(), choice.u) == nv.end());
-    }
-
-    // Add an edge between u and v.
-    void diveDifference(const BranchChoice& choice) {
-        if (neighbours[choice.v].size() == cliqueSize - 1) {
-            state[choice.v] = choice.v;
-            cliqueSize += 1;
-            for (auto w : (*graph)[choice.v]) {
-                if (state[w] == non_clique) {
-                    neighbours[w].push_back(choice.v);
-                }
-            }
-        } else {
-            neighbours[choice.v].push_back(choice.u);
-        }
-        RUN_INVARIANT_CHECK
-    }
-
-    // Revert a call to diveDifference with the same arguments.
-    void backtrackDifference(const BranchChoice& choice) {
-        if (state[choice.v] == choice.v) {
-            state[choice.v] = non_clique;
-            cliqueSize -= 1;
-            for (auto w : (*graph)[choice.v]) {
-                if (state[w] == non_clique) {
-                    neighbours[w].pop_back();
-                }
-            }
-        } else {
-            neighbours[choice.v].pop_back();
-        }
-        RUN_INVARIANT_CHECK
-    }
-
-    MergePlan planMerge(const BranchChoice& choice) const {
-        MergePlan plan;
+    MergeResult planMerge(const Merge& choice) const {
+        MergeResult plan;
         // Non-clique neighbours of v not already neighbours of u
         // either need neighbours updated or are clique candidates.
         std::vector<unsigned> cliqueCandidates;
@@ -279,7 +232,7 @@ class Node {
         return plan;
     }
 
-    void executeMerge(const BranchChoice& choice, const MergePlan& plan) {
+    void executeMerge(const Merge& choice, const MergeResult& plan) {
         state[choice.v] = choice.u;
         mergeCount += 1;
         for (const auto& w : plan.makeNeighboursOfU) {
@@ -301,16 +254,46 @@ class Node {
         RUN_INVARIANT_CHECK
     }
 
+    std::pair<Merge, Difference> branch_decision() const {
+        // Note that vertex indices, instead of iterators into the data
+        // structure, are used here. This is probably a performance hit
+        // for a pure backtracking algorithm, but is required if we are
+        // going to use this branching information in a different structure
+        // used by a different thread.
+        // Could provide GetBranchChoiceLocal() and GetBranchChoiceLocal()?
+        // Or a struct with a .generic() method which returns a non-iterator
+        // variant?
+        // Is it possible to prevent pointer invalidation in a reasonable
+        // way?
+        Merge m;
+        Difference d;
+        m.v = getMaxDSATVertex();
+        m.u = getMergeCandidate(m.v);
+        d.v = m.v;
+        d.u = m.u;
+        Expects(branchChoiceIsValid(m));
+        return std::make_pair(m, d);
+    }
+
+    bool branchChoiceIsValid(const Merge& choice) const {
+        const auto& nv = neighbours[choice.v];
+        return (
+            choice.u < state.size()
+            && choice.v < state.size()
+            && state[choice.u] == choice.u
+            && state[choice.v] == non_clique
+            && std::find(nv.begin(), nv.end(), choice.u) == nv.end());
+    }
+
     // Merge v into clique vertex u.
-    [[gnu::always_inline]]
-    MergePlan diveMerge(const BranchChoice& choice)  {
-        const MergePlan& plan = planMerge(choice);
+    MergeResult branch(const Merge& choice) {
+        const MergeResult& plan = planMerge(choice);
         executeMerge(choice, plan);
         return plan;
     }
 
     // Revert a call to diveMerge with the same arguments.
-    void backtrackMerge(const BranchChoice& choice, const MergePlan& plan) {
+    void backtrack(const Merge& choice, const MergeResult& plan) {
         // Neighbours must be removed before any states are changed so this
         // loop runs exactly as it did in the call to diveMerge().
         for (const auto& w : plan.addToClique) {
@@ -332,35 +315,52 @@ class Node {
         RUN_INVARIANT_CHECK
     }
 
-    [[gnu::always_inline]]
-    MergePlan diveRight(const BranchChoice& choice)  {
-        return diveMerge(choice);
+    // Add an edge between u and v.
+    DifferenceResult branch(const Difference& choice) {
+        if (neighbours[choice.v].size() == cliqueSize - 1) {
+            state[choice.v] = choice.v;
+            cliqueSize += 1;
+            for (auto w : (*graph)[choice.v]) {
+                if (state[w] == non_clique) {
+                    neighbours[w].push_back(choice.v);
+                }
+            }
+        } else {
+            neighbours[choice.v].push_back(choice.u);
+        }
+        RUN_INVARIANT_CHECK
+        DifferenceResult res;
+        return res;
     }
 
-    [[gnu::always_inline]]
-    nullptr_t diveLeft(const BranchChoice& choice)  {
-        diveDifference(choice);
-        return nullptr;
+    // Revert a call to diveDifference with the same arguments.
+    void backtrack(const Difference& choice, const DifferenceResult&) {
+        if (state[choice.v] == choice.v) {
+            state[choice.v] = non_clique;
+            cliqueSize -= 1;
+            for (auto w : (*graph)[choice.v]) {
+                if (state[w] == non_clique) {
+                    neighbours[w].pop_back();
+                }
+            }
+        } else {
+            neighbours[choice.v].pop_back();
+        }
+        RUN_INVARIANT_CHECK
     }
 
-    [[gnu::always_inline]]
-    void unwind(const BranchChoice& choice, const MergePlan& plan)  {
-        backtrackMerge(choice, plan);
+    bool is_leaf() const {
+        return (cliqueSize + mergeCount) == state.size();
     }
 
-    [[gnu::always_inline]]
-    void unwind(const BranchChoice& choice, nullptr_t)  {
-        backtrackDifference(choice);
-    }
+    constexpr bool is_feasible() const { return true; }
 
-    [[gnu::always_inline]]
-    BranchChoice getBranchingRule() const  {
-        return getBranchChoice();
-    }
-
-    [[gnu::always_inline]]
-    unsigned getObjective() const  {
+    unsigned get_lower_bound() const  {
         return cliqueSize;
+    }
+
+    VertexColorSol get_solution() const {
+        return VertexColorSol(cliqueSize);
     }
 
 };

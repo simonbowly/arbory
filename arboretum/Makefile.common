@@ -25,27 +25,20 @@ prf_cppflags = $(common_cppflags) -DNDEBUG -g -fno-inline
 incl = -I ../../include
 
 # Common targets.
-all: bin/main bin/test
 
 clean:
 	@echo " -> Cleaning bin and obj directories"
 	@rm -rf obj/ bin/
-
-bin:
-	@mkdir -p bin
-
-obj:
-	@mkdir -p obj
 
 bin/main: $(opt_objects) obj/main.opt.o
 	@mkdir -p bin
 	@echo " -> Linking main binary"
 	$(CC) -o $@ $(opt_objects) obj/main.opt.o
 
-bin/test: $(objects) obj/test.o
+bin/test: $(dbg_objects) obj/test.o
 	@mkdir -p bin
 	@echo " -> Linking test binary"
-	$(CC) -o $@ $(objects) obj/test.o
+	$(CC) -o $@ $(dbg_objects) obj/test.o
 
 test: bin/test
 	@bin/test

@@ -54,11 +54,11 @@ class Solver {
             Expects(head.branch1_evaluated());
             if (head.branch2_evaluated()) {
                 // Both branches have been pursued, discard the node.
-                state->backtrack(head.get_branch2_result());
+                state->backtrack(head.get_branch2(), head.get_branch2_result());
                 stack.pop_back();
             } else {
                 // Branch 1 has been pursued, branch 2 next.
-                state->backtrack(head.get_branch1_result());
+                state->backtrack(head.get_branch1(), head.get_branch1_result());
                 if (opt::can_be_pruned(*state, primal_bound)) {
                     // Pre-emptively prune the other branch.
                     stack.pop_back();

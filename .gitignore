@@ -33,5 +33,7 @@
 
 # Build directories
 bin/
-build/
 obj/
+
+# Local configuration files
+*.sublime-workspace

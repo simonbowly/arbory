@@ -2,7 +2,7 @@
 
 #include <unordered_set>
 
-#include "Graph.hpp"
+#include "../include/graph.hpp"
 
 using std::vector, std::pair, std::unordered_set, std::domain_error;
 

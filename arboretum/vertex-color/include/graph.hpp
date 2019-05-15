@@ -1,7 +1,7 @@
 // Copyright [2019] <Simon Bowly>
 
-#ifndef SRC_GRAPH_HPP_
-#define SRC_GRAPH_HPP_
+#ifndef SRC_VERTEXCOLOR_GRAPH_HPP_
+#define SRC_VERTEXCOLOR_GRAPH_HPP_
 
 #include <assert.h>
 #include <algorithm>
@@ -37,4 +37,4 @@ std::vector<NeighbourSet> trimmedGraph(
     const std::vector<unsigned>& clique);
 
 
-#endif  // SRC_GRAPH_HPP_
+#endif  // SRC_VERTEXCOLOR_GRAPH_HPP_

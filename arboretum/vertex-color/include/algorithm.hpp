@@ -1,6 +1,6 @@
 
-#ifndef SRC_ALGORITHMGRAPHCOLORNODEVECTOR_HPP_
-#define SRC_ALGORITHMGRAPHCOLORNODEVECTOR_HPP_
+#ifndef SRC_VERTEXCOLOR_ALGORITHM_HPP_
+#define SRC_VERTEXCOLOR_ALGORITHM_HPP_
 
 #include <utility>
 #include <vector>
@@ -10,4 +10,4 @@ void solveStackBacktrackingVector(
     const std::vector<std::pair<unsigned, unsigned>>& edges,
     unsigned nodeLogFrequency);
 
-#endif  // SRC_ALGORITHMGRAPHCOLORNODEVECTOR_HPP_
+#endif  // SRC_VERTEXCOLOR_ALGORITHM_HPP_

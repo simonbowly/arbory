@@ -6,9 +6,7 @@
 
 #include <cxxopts.hpp>
 
-#include "../../../include/stackBacktracking.hpp"
-
-#include "AlgorithmGraphColorNodeVector.hpp"
+#include "../include/algorithm.hpp"
 
 using namespace std;
 

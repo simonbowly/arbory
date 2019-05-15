@@ -4,10 +4,10 @@
 #include <vector>
 #include <gsl/gsl_assert>
 
-#include "../../../include/recursion.hpp"
-#include "../../../include/sense.hpp"
+#include "arbory/recursion.hpp"
+#include "arbory/sense.hpp"
 
-#include "maxclique.hpp"
+#include "../include/state.hpp"
 
 
 using namespace std;

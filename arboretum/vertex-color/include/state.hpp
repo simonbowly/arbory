@@ -1,7 +1,7 @@
 // Copyright [2019] <Simon Bowly>
 
-#ifndef SRC_GRAPHCOLORNODEVECTOR_HPP_
-#define SRC_GRAPHCOLORNODEVECTOR_HPP_
+#ifndef SRC_VERTEXCOLOR_STATE_HPP_
+#define SRC_VERTEXCOLOR_STATE_HPP_
 
 #include <algorithm>
 #include <iostream>
@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-#include "Graph.hpp"
+#include "graph.hpp"
 
 struct MergePlan {
     std::vector<unsigned> makeNeighboursOfU;
@@ -366,4 +366,4 @@ class Node {
 };
 
 
-#endif  // SRC_GRAPHCOLORNODEVECTOR_HPP_
+#endif  // SRC_VERTEXCOLOR_STATE_HPP_

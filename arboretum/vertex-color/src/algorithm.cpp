@@ -1,8 +1,8 @@
 
-#include "../../../include/stackBacktracking.hpp"
-#include "GraphColorNodeVector.hpp"
+#include "arbory/stack_backtracking.hpp"
 
-#include "AlgorithmGraphColorNodeVector.hpp"
+#include "../include/algorithm.hpp"
+#include "../include/state.hpp"
 
 using namespace std;
 

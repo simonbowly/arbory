@@ -19,13 +19,13 @@ src_files = $(addprefix src/, $(addsuffix .cpp, $(objects)))
 
 # Compiler flags.
 common_cppflags = -O3 -Wall -Wextra -pedantic -fPIC --std=c++17 -pthread
-cppflags = $(common_cppflags)
+cppflags = $(common_cppflags) -DGSL_THROW_ON_CONTRACT_VIOLATION
 opt_cppflags = $(common_cppflags) -DNDEBUG
 prf_cppflags = $(common_cppflags) -DNDEBUG -g -fno-inline
 incl = -I ../../include
 
 # Common targets.
-all: bin/run
+all: bin/main bin/test
 
 clean:
 	@echo " -> Cleaning bin and obj directories"
@@ -37,10 +37,18 @@ bin:
 obj:
 	@mkdir -p obj
 
-bin/run: $(opt_objects) obj/main.opt.o
+bin/main: $(opt_objects) obj/main.opt.o
 	@mkdir -p bin
 	@echo " -> Linking main binary"
-	$(CC) -o bin/run $(opt_objects) obj/main.opt.o
+	$(CC) -o $@ $(opt_objects) obj/main.opt.o
+
+bin/test: $(objects) obj/test.o
+	@mkdir -p bin
+	@echo " -> Linking test binary"
+	$(CC) -o $@ $(objects) obj/test.o
+
+test: bin/test
+	@bin/test
 
 obj/%.o: src/%.cpp
 	@mkdir -p obj
@@ -59,11 +67,11 @@ obj/%.prf.o: src/%.cpp
 
 depend: objects.d
 
-objects.d: $(src_files) src/main.cpp
+objects.d: $(src_files) src/main.cpp src/test.cpp
 	@mkdir -p obj
 	@echo " -> Updating dependencies"
-	$(CC) $(incl) $(cppflags) -MM $^ | sed -E "s|(\w+)\.o|obj/\1\.o|" > objects.d
-	$(CC) $(incl) $(cppflags) -MM $^ | sed -E "s|(\w+)\.o|obj/\1\.opt\.o|" >> objects.d
-	$(CC) $(incl) $(cppflags) -MM $^ | sed -E "s|(\w+)\.o|obj/\1\.prf\.o|" >> objects.d
+	$(CC) $(incl) $(cppflags) -MM $^ | sed -E "s|(\w+)\.o|obj/\1\.o|" > $@
+	$(CC) $(incl) $(cppflags) -MM $^ | sed -E "s|(\w+)\.o|obj/\1\.opt\.o|" >> $@
+	$(CC) $(incl) $(cppflags) -MM $^ | sed -E "s|(\w+)\.o|obj/\1\.prf\.o|" >> $@
 
 include objects.d

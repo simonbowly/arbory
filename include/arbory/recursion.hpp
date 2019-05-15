@@ -67,8 +67,4 @@ std::optional<Sol> solve_recursive(State* state) {
         state, initial_primal_bound<Obj, sense>());
 }
 
-// Repeated unnecessary calls to get_objective_value() and passing around primal_bound
-// values makes a case for passing primal_bound by pointer or wrapping the recursion
-// in a class so that it can call 'out'.
-
 #endif  // SRC_RECURSION_HPP

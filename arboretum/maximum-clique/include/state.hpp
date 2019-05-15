@@ -125,7 +125,7 @@ public:
     // (i.e. how many vertices were rejected as a result of including the branch
     // vertex in the clique) to allow backtracking.
     DiveIncludeResult branch(const DiveInclude& decision) {
-        // cout << "BRANCH INCLUDE " << decision.get_vertex() << endl;
+        // std::cout << "BRANCH INCLUDE " << decision.get_vertex() << std::endl;
         Expects(*clique_end == decision.get_vertex());
         ++clique_end;
         auto tmp = neighbours_end;
@@ -139,7 +139,7 @@ public:
 
     // Revert a call to branch(DiveInclude), transitioning to the parent state.
     void backtrack(const DiveIncludeResult& dived) {
-        // cout << "BACKTRACK INCLUDE" << endl;
+        // std::cout << "BACKTRACK INCLUDE" << std::endl;
         --clique_end;
         neighbours_end += dived.get_moved();
         // print_state();
@@ -147,7 +147,7 @@ public:
 
     // Alter the state to check the exclude(v) branch.
     DiveExcludeResult branch(const DiveExclude& decision) {
-        // cout << "BRANCH EXCLUDE " << decision.get_vertex() << endl;
+        // std::cout << "BRANCH EXCLUDE " << decision.get_vertex() << std::endl;
         Expects(*clique_end == decision.get_vertex());
         --neighbours_end;
         std::swap(*clique_end, *neighbours_end);
@@ -158,7 +158,7 @@ public:
     // Reverts a call to branch(DiveExclude), transitioning to the parent state.
     // This is always the same operation.
     void backtrack(const DiveExcludeResult&) {
-        // cout << "BACKTRACK EXCLUDE" << endl;
+        // std::cout << "BACKTRACK EXCLUDE" << std::endl;
         std::swap(*clique_end, *neighbours_end);
         ++neighbours_end;
         // print_state();
@@ -177,11 +177,6 @@ public:
     unsigned get_upper_bound() const {
         return neighbours_end - state_begin;
     }
-
-    // It's meaningless to minimize this problem but it demos compile-time trickery.
-    // unsigned get_lower_bound() const {
-    //     return clique_end - begin(state);
-    // }
 
     // If at a leaf state, return the solution.
     MaximumCliqueSol get_solution() const {

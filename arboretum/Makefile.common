@@ -10,12 +10,20 @@
 ## to build the executable bin/run.
 ###############################################################
 
-# Object files based on list given by user.
-CC = @g++
-dbg_objects = $(addprefix obj/, $(addsuffix .o, $(objects)))
-opt_objects = $(addprefix obj/, $(addsuffix .opt.o, $(objects)))
-prf_objects = $(addprefix obj/, $(addsuffix .prf.o, $(objects)))
-src_files = $(addprefix src/, $(addsuffix .cpp, $(objects)))
+ifeq ($(VERBOSE), true)
+	CC = g++
+else
+	CC = @g++
+endif
+
+# Object and source files based on lists given by user.
+dbg_objects = $(addprefix obj/, $(addsuffix .o, $(project_objects)))
+opt_objects = $(addprefix obj/, $(addsuffix .opt.o, $(project_objects)))
+prf_objects = $(addprefix obj/, $(addsuffix .prf.o, $(project_objects)))
+
+opt_objects += $(addprefix ../../obj/, $(addsuffix .opt.o, $(arbory_objects)))
+dbg_objects += $(addprefix ../../obj/, $(addsuffix .o, $(arbory_objects)))
+prf_objects += $(addprefix ../../obj/, $(addsuffix .prf.o, $(arbory_objects)))
 
 # Compiler flags.
 common_cppflags = -O3 -Wall -Wextra -pedantic -fPIC --std=c++17 -pthread
@@ -41,22 +49,46 @@ bin/test: $(dbg_objects) obj/test.o
 	$(CC) -o $@ $(dbg_objects) obj/test.o
 
 test: bin/test
+	echo $(src_files)
 	@bin/test
 
+# Compile source files of this project.
+
 obj/%.o: src/%.cpp
-	@mkdir -p obj
+	@mkdir -p $(shell dirname $@)
 	@echo " -> Compiling $< in debug mode"
 	$(CC) $(incl) $(cppflags) -o $@ $< -c
 
 obj/%.opt.o: src/%.cpp
-	@mkdir -p obj
+	@mkdir -p $(shell dirname $@)
 	@echo " -> Compiling $< in release mode"
 	$(CC) $(incl) $(opt_cppflags) -o $@ $< -c
 
 obj/%.prf.o: src/%.cpp
-	@mkdir -p obj
+	@mkdir -p $(shell dirname $@)
 	@echo " -> Compiling $< in profile mode"
 	$(CC) $(incl) $(prf_cppflags) -o $@ $< -c
+
+# Compile source files required from arbory.
+
+../../obj/%.o: ../../src/%.cpp
+	@mkdir -p $(shell dirname $@)
+	@echo " -> Compiling $< in debug mode"
+	$(CC) $(incl) $(cppflags) -o $@ $< -c
+
+../../obj/%.opt.o: ../../src/%.cpp
+	@mkdir -p $(shell dirname $@)
+	@echo " -> Compiling $< in release mode"
+	$(CC) $(incl) $(opt_cppflags) -o $@ $< -c
+
+../../obj/%.prf.o: ../../src/%.cpp
+	@mkdir -p $(shell dirname $@)
+	@echo " -> Compiling $< in profile mode"
+	$(CC) $(incl) $(prf_cppflags) -o $@ $< -c
+
+# Dependencies (only works for local obj/*.o at the moment).
+
+src_files = $(addprefix src/, $(addsuffix .cpp, $(project_objects)))
 
 depend: objects.d
 

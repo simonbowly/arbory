@@ -7,8 +7,8 @@
 #include <vector>
 
 #include <gsl/gsl_assert>
+#include <arbory/struct/graph.hpp>
 
-#include "graph.hpp"
 
 // Branch decisions store the vertex being branched on (although at this point
 // no checking is actually needed).
@@ -103,14 +103,14 @@ public:
 class MaximumCliqueState {
     using Iter = std::vector<unsigned>::iterator;
 
-    const Graph & graph;
+    const UndirectedGraph & graph;
     Iter state_begin;
     Iter clique_end;
     Iter neighbours_end;
     Iter state_end;
 
 public:
-    MaximumCliqueState(const Graph& g, Iter b, Iter e) :
+    MaximumCliqueState(const UndirectedGraph& g, Iter b, Iter e) :
         graph(g), state_begin(b), clique_end(b),
         neighbours_end(e), state_end(e) {}
 

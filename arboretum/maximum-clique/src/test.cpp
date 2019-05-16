@@ -2,9 +2,9 @@
 #include <iostream>
 #include <vector>
 
-#include "arbory/backtracking.hpp"
-#include "arbory/recursion.hpp"
-#include "arbory/sense.hpp"
+#include <arbory/backtracking.hpp>
+#include <arbory/recursion.hpp>
+#include <arbory/sense.hpp>
 
 #include "../include/state.hpp"
 
@@ -28,7 +28,7 @@ int main() {
         edges.emplace_back(2, 5);
         edges.emplace_back(2, 8);
         edges.emplace_back(5, 8);
-    Graph graph(10, edges);
+    UndirectedGraph graph(10, edges);
 
     {
         cout << "========= RECURSION ==========" << endl;

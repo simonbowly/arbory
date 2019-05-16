@@ -13,6 +13,8 @@
 #include <gsl/gsl_assert>
 #include <arbory/struct/graph.hpp>
 
+#include "../../maximum-clique/include/algorithm.hpp"
+
 
 struct Merge {
     unsigned u;
@@ -125,33 +127,19 @@ class Node {
             && (mergeCount == other.mergeCount));
     }
 
-    void initialise_greedy() {
+    void initialise() {
         Expects(std::all_of(
             std::begin(state), std::end(state),
             [](unsigned val) { return val == non_clique; }));
-        // Greedy clique construction.
-        std::vector<unsigned> clique;
-        clique.push_back(0);
-        for (unsigned u = 1; u < graph.vertices(); u++) {
-            bool include = true;
-            for (unsigned c : clique) {
-                if (!graph.adjacent(u, c)) {
-                    include = false;
-                    break;
-                }
-            }
-            if (include) {
-                clique.push_back(u);
-            }
-        }
         // Initialised with n non-clique states, and n empty neighbour lists.
         // Sets the current graph clique (reset are non-clique by default).
-        for (const auto& u : clique) {
+        auto clique = solve_recursive(graph);
+        for (const auto& u : clique->get()) {
             state[u] = u;
         }
-        cliqueSize = clique.size();
+        cliqueSize = clique->get().size();
         // Construct variable graph states.
-        for (const auto& u : clique) {
+        for (const auto& u : clique->get()) {
             for (const auto& v : graph[u]) {
                 if (state[v] == non_clique) {
                     neighbours[v].push_back(u);

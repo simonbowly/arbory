@@ -21,6 +21,6 @@ int main(int argc, char **argv) {
     const auto graph = UndirectedGraph::read_dimacs(result["file"].as<string>());
     cout << "Vertices: " << graph.vertices() << endl;
     cout << "Edges: " << graph.edges() << endl;
-    solve_backtrack(graph, result["log"].as<unsigned>());
+    solve_backtrack_vc(graph, result["log"].as<unsigned>());
     return 0;
 }

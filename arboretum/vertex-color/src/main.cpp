@@ -1,8 +1,6 @@
 
 #include <iostream>
-#include <random>
-#include <utility>
-#include <vector>
+#include <string>
 
 #include <cxxopts.hpp>
 
@@ -12,34 +10,17 @@ using namespace std;
 
 
 int main(int argc, char **argv) {
-
-    cxxopts::Options options("Graph Colourer", "Complete GC solver");
+    cxxopts::Options options("Arbory Vertex Coloring", "Exact Vertex Coloring Solver");
     options.add_options()
-        ("v,vertices", "Number of Vertices", cxxopts::value<unsigned>())
-        ("p,probability", "Edge Probability", cxxopts::value<double>())
-        ("f,frequency", "Node Log Frequency", cxxopts::value<unsigned>())
+        ("f,file", "Input File", cxxopts::value<string>())
+        ("l,log", "Node Log Frequency", cxxopts::value<unsigned>())
+        ("m,mode", "Tree Search Mode", cxxopts::value<string>())
         ;
+    options.parse_positional({"file"});
     auto result = options.parse(argc, argv);
-
-    default_random_engine rng;
-    uniform_real_distribution<double> dist(0, 1);
-
-    // Graph problem construction.
-    unsigned n = result["vertices"].as<unsigned>();
-    double d = result["probability"].as<double>();
-    vector<pair<unsigned, unsigned>> edges;
-    {
-        for (unsigned i = 0; i < n; i++) {
-            for (unsigned j = i + 1; j < n; j++) {
-                if (dist(rng) < d) {
-                    edges.emplace_back(i, j);
-                }
-            }
-        }
-    }
-
-    solveStackBacktrackingVector(n, edges, result["frequency"].as<unsigned>());
-
+    const auto graph = UndirectedGraph::read_dimacs(result["file"].as<string>());
+    cout << "Vertices: " << graph.vertices() << endl;
+    cout << "Edges: " << graph.edges() << endl;
+    solve_backtrack(graph, result["log"].as<unsigned>());
     return 0;
-
 }

@@ -7,18 +7,13 @@
 using namespace std;
 
 
-void solveStackBacktrackingVector(
-    unsigned vertices,
-    const std::vector<std::pair<unsigned, unsigned>>& edges,
-    unsigned nodeLogFrequency)
-{
+void solve_backtrack(const UndirectedGraph& graph, unsigned log_frequency) {
     using VertexColorSolver = Solver<
         Node, VertexColorSol, unsigned int, Sense::Minimize,
         Merge, Difference, MergeResult, DifferenceResult>;
-    Node root = Node::createRoot(vertices, edges);
+    Node root(graph);
+    root.initialise_greedy();
+    cout << "Clique: " << root.get_lower_bound() << endl;
     VertexColorSolver solver(&root);
-    solver.solve(nodeLogFrequency);
-
-    // stackBacktracking<Node, BranchChoice, MergePlan, nullptr_t>(
-    //     &root, nodeLogFrequency);
+    solver.solve(log_frequency);
 }

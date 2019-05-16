@@ -9,9 +9,10 @@
 #include <limits>
 #include <utility>
 #include <vector>
-#include <gsl/gsl_assert>
 
-#include "graph.hpp"
+#include <gsl/gsl_assert>
+#include <arbory/struct/graph.hpp>
+
 
 struct Merge {
     unsigned u;
@@ -58,11 +59,11 @@ class Node {
     // state[u] == u -> u is a clique vertex
     // state[u] == v -> u is merged with u
     // state[u] == nullopt -> u outside clique
+    const UndirectedGraph& graph;
     std::vector<unsigned> state;
     std::vector<std::vector<unsigned>> neighbours;
     unsigned cliqueSize;
     unsigned mergeCount;
-    std::shared_ptr<const std::vector<NeighbourSet>> graph;
 
     // TODO(simonbowly) check uniqueness in graph & neighbour structures.
     // Use a constexpr to introduce these calls to allow
@@ -106,8 +107,9 @@ class Node {
     Node& operator=(const Node&) = default;
 
  public:
-    explicit Node(unsigned n) : state(n, non_clique), neighbours(n),
-        cliqueSize(0), mergeCount(0), graph(nullptr) {}
+    explicit Node(const UndirectedGraph& g) :
+        graph(g), state(g.vertices(), non_clique),
+        neighbours(g.vertices()), cliqueSize(0), mergeCount(0) {}
     Node(Node&& a) = default;
     Node& operator=(Node&& a) = default;
 
@@ -123,16 +125,17 @@ class Node {
             && (mergeCount == other.mergeCount));
     }
 
-    static Node createRoot(unsigned vertices,
-            const std::vector<std::pair<unsigned, unsigned>>& edges) {
-        auto g = createGraph(vertices, edges);
+    void initialise_greedy() {
+        Expects(std::all_of(
+            std::begin(state), std::end(state),
+            [](unsigned val) { return val == non_clique; }));
         // Greedy clique construction.
         std::vector<unsigned> clique;
         clique.push_back(0);
-        for (unsigned u = 1; u < vertices; u++) {
+        for (unsigned u = 1; u < graph.vertices(); u++) {
             bool include = true;
             for (unsigned c : clique) {
-                if (!g[u].find(c)) {
+                if (!graph.adjacent(u, c)) {
                     include = false;
                     break;
                 }
@@ -142,27 +145,22 @@ class Node {
             }
         }
         // Initialised with n non-clique states, and n empty neighbour lists.
-        Node node(vertices);
         // Sets the current graph clique (reset are non-clique by default).
         for (const auto& u : clique) {
-            node.state[u] = u;
+            state[u] = u;
         }
-        node.cliqueSize = clique.size();
+        cliqueSize = clique.size();
         // Construct variable graph states.
         for (const auto& u : clique) {
-            for (const auto& v : g[u]) {
-                if (node.state[v] == non_clique) {
-                    node.neighbours[v].push_back(u);
+            for (const auto& v : graph[u]) {
+                if (state[v] == non_clique) {
+                    neighbours[v].push_back(u);
                 }
             }
         }
-        // TODO(simonbowly) can replace graph with trimmed graph at this point.
-        node.graph = std::make_shared<std::vector<NeighbourSet>>(
-            trimmedGraph(g, clique));
         #ifndef NDEBUG
-        node.checkInvariant();
+        checkInvariant();
         #endif
-        return node;
     }
 
     unsigned getMaxDSATVertex() const {
@@ -181,7 +179,7 @@ class Node {
             }
         }
         unsigned v = best - neighbours.begin();
-        assert(state[v] == non_clique);
+        Ensures(state[v] == non_clique);
         return v;
     }
 
@@ -203,7 +201,7 @@ class Node {
         // Non-clique neighbours of v not already neighbours of u
         // either need neighbours updated or are clique candidates.
         std::vector<unsigned> cliqueCandidates;
-        for (const auto& w : (*graph)[choice.v]) {
+        for (const auto& w : graph[choice.v]) {
             if (state[w] == non_clique) {
                 const auto& nw = neighbours[w];
                 if (std::find(nw.begin(), nw.end(), choice.u) == nw.end()) {
@@ -217,10 +215,12 @@ class Node {
         }
         for (const auto& c : cliqueCandidates) {
             bool include = true;
-            const auto& tmp = (*graph)[c];
+            // const auto& tmp = graph[c];
             for (auto w : plan.addToClique) {
-                if (!tmp.find(w)) {
+                // if (!tmp.find(w)) {
+                if (!graph.adjacent(c, w)) {
                     include = false;
+                    break;
                 }
             }
             if (include) {
@@ -245,7 +245,7 @@ class Node {
             state[w] = w;
         }
         for (const auto& w : plan.addToClique) {
-            for (const auto& x : (*graph)[w]) {
+            for (const auto& x : graph[w]) {
                 if (state[x] == non_clique) {
                     neighbours[x].push_back(w);
                 }
@@ -297,7 +297,7 @@ class Node {
         // Neighbours must be removed before any states are changed so this
         // loop runs exactly as it did in the call to diveMerge().
         for (const auto& w : plan.addToClique) {
-            for (const auto& x : (*graph)[w]) {
+            for (const auto& x : graph[w]) {
                 if (state[x] == non_clique) {
                     neighbours[x].pop_back();
                 }
@@ -320,7 +320,7 @@ class Node {
         if (neighbours[choice.v].size() == cliqueSize - 1) {
             state[choice.v] = choice.v;
             cliqueSize += 1;
-            for (auto w : (*graph)[choice.v]) {
+            for (auto w : graph[choice.v]) {
                 if (state[w] == non_clique) {
                     neighbours[w].push_back(choice.v);
                 }
@@ -338,7 +338,7 @@ class Node {
         if (state[choice.v] == choice.v) {
             state[choice.v] = non_clique;
             cliqueSize -= 1;
-            for (auto w : (*graph)[choice.v]) {
+            for (auto w : graph[choice.v]) {
                 if (state[w] == non_clique) {
                     neighbours[w].pop_back();
                 }

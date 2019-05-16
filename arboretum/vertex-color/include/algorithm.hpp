@@ -5,9 +5,8 @@
 #include <utility>
 #include <vector>
 
-void solveStackBacktrackingVector(
-    unsigned vertices,
-    const std::vector<std::pair<unsigned, unsigned>>& edges,
-    unsigned nodeLogFrequency);
+#include <arbory/struct/graph.hpp>
+
+void solve_backtrack(const UndirectedGraph& graph, unsigned log_frequency);
 
 #endif  // SRC_VERTEXCOLOR_ALGORITHM_HPP_

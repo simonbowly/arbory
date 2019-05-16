@@ -34,6 +34,9 @@ public:
         const auto& ref = _adjacent[i];
         return std::binary_search(std::begin(ref), std::end(ref), j);
     }
+    const std::vector<unsigned>& operator[](unsigned i) const {
+        return _adjacent[i];
+    }
     // Read a DIMACS file (format below) and return the graph object.
     //
     //   p edges N M

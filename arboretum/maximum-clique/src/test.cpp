@@ -51,7 +51,7 @@ int main() {
             MaximumCliqueState, MaximumCliqueSol, unsigned int, Sense::Maximize,
             DiveInclude, DiveExclude, DiveIncludeResult, DiveExcludeResult>;
         MaxCliqueSolver solver(&state);
-        solver.solve(100);
+        solver.solve(1);
         cout << "Solution Pool: " << endl;
         for (const auto& solution : solver.get_solutions()) {
             cout << "  (Obj = " << solution.get_objective_value() << ")  ";

@@ -8,6 +8,7 @@
 #include <gsl/gsl_assert>
 
 #include "../include/algorithm.hpp"
+#include "../include/state.hpp"
 
 using namespace std;
 
@@ -25,6 +26,7 @@ MaximumCliqueState root_state(const UndirectedGraph& graph, vector<unsigned>* in
 optional<MaximumCliqueSol> solve_recursive(const UndirectedGraph& graph) {
     vector<unsigned> initial_order;
     auto state = root_state(graph, &initial_order);
+    state.sort_and_imply();
     auto start = chrono::high_resolution_clock::now();
     auto solution = solve_recursive<
         MaximumCliqueState, MaximumCliqueSol,
@@ -37,13 +39,14 @@ optional<MaximumCliqueSol> solve_recursive(const UndirectedGraph& graph) {
 }
 
 
-vector<MaximumCliqueSol> solve_backtrack(const UndirectedGraph& graph) {
+vector<MaximumCliqueSol> solve_backtrack(const UndirectedGraph& graph, unsigned log_frequency) {
     vector<unsigned> initial_order;
     auto state = root_state(graph, &initial_order);
+    state.sort_and_imply();
     using MaxCliqueSolver = Solver<
         MaximumCliqueState, MaximumCliqueSol, unsigned int, Sense::Maximize,
         DiveInclude, DiveExclude, DiveIncludeResult, DiveExcludeResult>;
     MaxCliqueSolver solver(&state);
-    solver.solve(1000);
+    solver.solve(log_frequency);
     return solver.get_solutions();
 }

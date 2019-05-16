@@ -10,10 +10,11 @@
 // Undirected graph with N vertices numbered 0..N-1.
 class UndirectedGraph {
     std::vector<std::vector<unsigned>> _adjacent;
+    unsigned _edges;
 public:
     // Construct from edge list (assumes no repetition of pairs).
     UndirectedGraph(unsigned n, std::vector<std::pair<unsigned, unsigned>> edges)
-        : _adjacent(n)
+        : _adjacent(n), _edges(edges.size())
     {
         for (auto [i, j] : edges) {
             _adjacent[i].push_back(j);
@@ -26,6 +27,8 @@ public:
     }
     // Accessors
     unsigned vertices() const { return _adjacent.size(); }
+    unsigned edges() const { return _edges; }
+    unsigned degree(unsigned i) const { return _adjacent[i].size(); }
     // Return whether an edge exists between i and j.
     bool adjacent(const unsigned i, const unsigned j) const {
         const auto& ref = _adjacent[i];

@@ -5,6 +5,7 @@
 #include <chrono>
 #include <iostream>
 #include <optional>
+#include <utility>
 #include <vector>
 #include <gsl/gsl_assert>
 
@@ -69,6 +70,32 @@ class Solver {
         }
     }
 
+    void print_stack() const {
+        for (const auto & node : stack) {
+            Expects(node.branch1_evaluated());
+            if (node.branch2_evaluated()) {
+                std::cout << "L";
+            } else {
+                std::cout << "R";
+            }
+        }
+        std::cout << std::endl;
+    }
+
+    std::pair<unsigned, unsigned> depths() const {
+        unsigned ldepth = 0, rdepth = 0;
+        auto it = stack.begin();
+        while (it != stack.end() && it->branch2_evaluated()) {
+            ++it;
+            ++ldepth;
+        }
+        while (it != stack.end() && !it->branch2_evaluated()) {
+            ++it;
+            ++rdepth;
+        }
+        return std::make_pair(ldepth, rdepth);
+    }
+
     void solve(unsigned int logFrequency) {
         unsigned int nodes = 0;
         auto start = std::chrono::high_resolution_clock::now();
@@ -114,9 +141,12 @@ class Solver {
                     (std::chrono::high_resolution_clock::now() - start)
                     .count() / 1000;
                 if (incumbent) { std::cout << "*"; } else { std::cout << " "; }
+                auto [ldepth, rdepth] = depths();
                 std::cout << "  TIME: " << runtime << "s"
                         << "  NODES: " << nodes
                         << "  PRIMAL: " << primal_bound
+                        << "  LDEPTH: " << ldepth
+                        << "  RDEPTH: " << rdepth
                         << std::endl;
             }
         }

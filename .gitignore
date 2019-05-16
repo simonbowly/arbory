@@ -37,3 +37,9 @@ obj/
 
 # Local configuration files
 *.sublime-workspace
+
+# Logging and output
+*.log
+
+# Python precompile
+__pycache__/

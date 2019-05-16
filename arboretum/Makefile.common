@@ -10,6 +10,8 @@
 ## to build the executable bin/run.
 ###############################################################
 
+arbory_dir = ../..
+
 ifeq ($(VERBOSE), true)
 	CC = g++
 else
@@ -17,20 +19,22 @@ else
 endif
 
 # Object and source files based on lists given by user.
+
 dbg_objects = $(addprefix obj/, $(addsuffix .o, $(project_objects)))
 opt_objects = $(addprefix obj/, $(addsuffix .opt.o, $(project_objects)))
 prf_objects = $(addprefix obj/, $(addsuffix .prf.o, $(project_objects)))
 
-opt_objects += $(addprefix ../../obj/, $(addsuffix .opt.o, $(arbory_objects)))
-dbg_objects += $(addprefix ../../obj/, $(addsuffix .o, $(arbory_objects)))
-prf_objects += $(addprefix ../../obj/, $(addsuffix .prf.o, $(arbory_objects)))
+opt_objects += $(addprefix $(arbory_dir)/obj/, $(addsuffix .opt.o, $(arbory_objects)))
+dbg_objects += $(addprefix $(arbory_dir)/obj/, $(addsuffix .o, $(arbory_objects)))
+prf_objects += $(addprefix $(arbory_dir)/obj/, $(addsuffix .prf.o, $(arbory_objects)))
 
 # Compiler flags.
+
 common_cppflags = -O3 -Wall -Wextra -pedantic -fPIC --std=c++17 -pthread
 cppflags = $(common_cppflags) -DGSL_THROW_ON_CONTRACT_VIOLATION
 opt_cppflags = $(common_cppflags) -DNDEBUG
 prf_cppflags = $(common_cppflags) -DNDEBUG -g -fno-inline
-incl = -I ../../include
+incl = -I $(arbory_dir)/include
 
 # Common targets.
 
@@ -40,13 +44,13 @@ clean:
 
 bin/main: $(opt_objects) obj/main.opt.o
 	@mkdir -p bin
-	@echo " -> Linking main binary"
-	$(CC) -o $@ $(opt_objects) obj/main.opt.o
+	@echo " -> Linking $@ in release mode"
+	$(CC) -o $@ $^
 
 bin/test: $(dbg_objects) obj/test.o
 	@mkdir -p bin
-	@echo " -> Linking test binary"
-	$(CC) -o $@ $(dbg_objects) obj/test.o
+	@echo " -> Linking $@ in debug mode"
+	$(CC) -o $@ $^
 
 test: bin/test
 	echo $(src_files)
@@ -71,17 +75,17 @@ obj/%.prf.o: src/%.cpp
 
 # Compile source files required from arbory.
 
-../../obj/%.o: ../../src/%.cpp
+$(arbory_dir)/obj/%.o: $(arbory_dir)/src/%.cpp
 	@mkdir -p $(shell dirname $@)
 	@echo " -> Compiling $< in debug mode"
 	$(CC) $(incl) $(cppflags) -o $@ $< -c
 
-../../obj/%.opt.o: ../../src/%.cpp
+$(arbory_dir)/obj/%.opt.o: $(arbory_dir)/src/%.cpp
 	@mkdir -p $(shell dirname $@)
 	@echo " -> Compiling $< in release mode"
 	$(CC) $(incl) $(opt_cppflags) -o $@ $< -c
 
-../../obj/%.prf.o: ../../src/%.cpp
+$(arbory_dir)/obj/%.prf.o: $(arbory_dir)/src/%.cpp
 	@mkdir -p $(shell dirname $@)
 	@echo " -> Compiling $< in profile mode"
 	$(CC) $(incl) $(prf_cppflags) -o $@ $< -c
@@ -89,14 +93,16 @@ obj/%.prf.o: src/%.cpp
 # Dependencies (only works for local obj/*.o at the moment).
 
 src_files = $(addprefix src/, $(addsuffix .cpp, $(project_objects)))
+src_files += $(addprefix $(arbory_dir)/src/, $(addsuffix .cpp, $(arbory_objects)))
 
-depend: objects.d
-
-objects.d: $(src_files) src/main.cpp src/test.cpp
+obj/objects.d: $(src_files) src/main.cpp src/test.cpp
 	@mkdir -p obj
 	@echo " -> Updating dependencies"
-	$(CC) $(incl) $(cppflags) -MM $^ | sed -E "s|(\w+)\.o|obj/\1\.o|" > $@
-	$(CC) $(incl) $(cppflags) -MM $^ | sed -E "s|(\w+)\.o|obj/\1\.opt\.o|" >> $@
-	$(CC) $(incl) $(cppflags) -MM $^ | sed -E "s|(\w+)\.o|obj/\1\.prf\.o|" >> $@
+	$(CC) $(incl) $(cppflags) -MM $^ > $@
+	@sed -E -i "s|(\w+\.o): (.*/)(\w+\.cpp)|\2\1: \2\3|" $@
+	@sed -E -i "s|(.*)src(.*:)|\1obj\2|" $@
 
-include objects.d
+obj/objects.%.d: obj/objects.d
+	@sed -E "s|\.o|\.$*.o|" $< > $@
+
+include obj/objects.d obj/objects.opt.d obj/objects.prf.d

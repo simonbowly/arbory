@@ -1,4 +1,4 @@
 
 all: bin/main
-objects = graph algorithm
+project_objects = graph algorithm
 include ../Makefile.common

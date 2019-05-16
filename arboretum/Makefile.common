@@ -53,7 +53,6 @@ bin/test: $(dbg_objects) obj/test.o
 	$(CC) -o $@ $^
 
 test: bin/test
-	echo $(src_files)
 	@bin/test
 
 # Compile source files of this project.

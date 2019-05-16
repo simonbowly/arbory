@@ -188,34 +188,27 @@ class Node {
         MergeResult plan;
         // Non-clique neighbours of v not already neighbours of u
         // either need neighbours updated or are clique candidates.
-        std::vector<unsigned> cliqueCandidates;
         for (const auto& w : graph[choice.v]) {
             if (state[w] == non_clique) {
                 const auto& nw = neighbours[w];
                 if (std::find(nw.begin(), nw.end(), choice.u) == nw.end()) {
                     if (nw.size() == cliqueSize - 1) {
-                        cliqueCandidates.push_back(w);
+                        plan.addToClique.push_back(w);
                     } else {
                         plan.makeNeighboursOfU.push_back(w);
                     }
                 }
             }
         }
-        for (const auto& c : cliqueCandidates) {
-            bool include = true;
-            // const auto& tmp = graph[c];
-            for (auto w : plan.addToClique) {
-                // if (!tmp.find(w)) {
-                if (!graph.adjacent(c, w)) {
-                    include = false;
-                    break;
-                }
+        // Divide cliqueCandidates into a sub-clique and others.
+        // Add clique to plan.addToClique and other to plan.makeNeighboursOfU.
+        // Not sure this has turned out faster than a greedy algorithm.
+        if (plan.addToClique.size() > 1) {
+            auto mid = solve_subgraph(graph, &plan.addToClique);
+            for (auto it = mid; it != std::end(plan.addToClique); ++it) {
+                plan.makeNeighboursOfU.push_back(*it);
             }
-            if (include) {
-                plan.addToClique.push_back(c);
-            } else {
-                plan.makeNeighboursOfU.push_back(c);
-            }
+            plan.addToClique.erase(mid, std::end(plan.addToClique));
         }
         return plan;
     }

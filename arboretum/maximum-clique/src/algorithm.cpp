@@ -34,7 +34,7 @@ optional<MaximumCliqueSol> solve_recursive(const UndirectedGraph& graph) {
     double runtime = std::chrono::duration<double, std::milli>
         (chrono::high_resolution_clock::now() - start)
         .count() / 1000;
-    cout << "Time:      " << runtime << " seconds" << endl;
+    cout << "Time: " << runtime << " seconds" << endl;
     return solution;
 }
 
@@ -49,4 +49,17 @@ vector<MaximumCliqueSol> solve_backtrack(const UndirectedGraph& graph, unsigned 
     MaxCliqueSolver solver(&state);
     solver.solve(log_frequency);
     return solver.get_solutions();
+}
+
+
+// definitely can be improved (don't copy out the solution, just leave partitioned?)
+vector<unsigned>::iterator solve_subgraph(const UndirectedGraph& graph, vector<unsigned>* vertices) {
+    MaximumCliqueState state(graph, begin(*vertices), end(*vertices));
+    state.sort_and_imply();
+    auto solution = solve_recursive<
+        MaximumCliqueState, MaximumCliqueSol,
+        unsigned int, Sense::Maximize>(&state);
+    return partition(begin(*vertices), end(*vertices), [solution](unsigned u) {
+        return find(begin(solution->get()), end(solution->get()), u) != end(solution->get());
+    });
 }

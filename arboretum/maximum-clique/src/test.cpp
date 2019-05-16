@@ -6,7 +6,7 @@
 #include <arbory/recursion.hpp>
 #include <arbory/sense.hpp>
 
-#include "../include/state.hpp"
+#include "../include/algorithm.hpp"
 
 
 using namespace std;
@@ -32,11 +32,7 @@ int main() {
 
     {
         cout << "========= RECURSION ==========" << endl;
-        vector<unsigned> initial_order {4, 7, 2, 3, 5, 6, 0, 9, 1, 8};
-        MaximumCliqueState state(graph, begin(initial_order), end(initial_order));
-        auto solution = solve_recursive<
-            MaximumCliqueState, MaximumCliqueSol,
-            unsigned int, Sense::Maximize>(&state);
+        auto solution = solve_recursive(graph);
         cout << "Solution: " << endl;
         cout << "  (Obj = " << solution->get_objective_value() << ")  ";
         solution->print();
@@ -44,20 +40,26 @@ int main() {
     }
 
     {
-        cout << endl << "===== STACK BACKTRACKING =====" << endl;
-        vector<unsigned> initial_order {4, 7, 2, 3, 5, 6, 0, 9, 1, 8};
-        MaximumCliqueState state(graph, begin(initial_order), end(initial_order));
-        using MaxCliqueSolver = Solver<
-            MaximumCliqueState, MaximumCliqueSol, unsigned int, Sense::Maximize,
-            DiveInclude, DiveExclude, DiveIncludeResult, DiveExcludeResult>;
-        MaxCliqueSolver solver(&state);
-        solver.solve(1);
+        cout << "======== BACKTRACKING ========" << endl;
+        auto solutions = solve_backtrack(graph, 10);
         cout << "Solution Pool: " << endl;
-        for (const auto& solution : solver.get_solutions()) {
+        for (const auto& solution : solutions) {
             cout << "  (Obj = " << solution.get_objective_value() << ")  ";
             solution.print();
             cout << endl;
         }
+    }
+
+    {
+        cout << "========= SUBGRAPH ==========" << endl;
+        vector<unsigned> vertices {4, 7, 5, 6, 0, 9};
+        auto mid = solve_subgraph(graph, &vertices);
+        cout << "Clique: ";
+        for_each(begin(vertices), mid, [](int n){ cout << n << " "; });
+        cout << endl;
+        cout << "Other: ";
+        for_each(mid, end(vertices), [](int n){ cout << n << " "; });
+        cout << endl;
     }
 
 }

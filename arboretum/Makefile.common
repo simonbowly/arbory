@@ -2,12 +2,13 @@
 ## Common flags and targets used by arboretum solvers.
 ## A minimal makefile for a new project is:
 ##
+##      all = bin/main
 ##      objects = algorithm helper
-##		include ../Makefile.common
+##      include ../Makefile.common
 ##
 ## which will compile src/algorithm.cpp and src/helper.cpp
 ## to object files and include them along with src/main.cpp
-## to build the executable bin/run.
+## to build the executable bin/main.
 ###############################################################
 
 arbory_dir = ../..
@@ -20,34 +21,39 @@ endif
 
 # Object and source files based on lists given by user.
 
-dbg_objects = $(addprefix obj/, $(addsuffix .o, $(project_objects)))
-opt_objects = $(addprefix obj/, $(addsuffix .opt.o, $(project_objects)))
-prf_objects = $(addprefix obj/, $(addsuffix .prf.o, $(project_objects)))
+objects += $(addprefix obj/, $(project_objects))
+objects += $(addprefix $(arbory_dir)/obj/, $(arbory_objects))
 
-opt_objects += $(addprefix $(arbory_dir)/obj/, $(addsuffix .opt.o, $(arbory_objects)))
-dbg_objects += $(addprefix $(arbory_dir)/obj/, $(addsuffix .o, $(arbory_objects)))
-prf_objects += $(addprefix $(arbory_dir)/obj/, $(addsuffix .prf.o, $(arbory_objects)))
+dbg_objects = $(addsuffix .o, $(objects))
+opt_objects = $(addsuffix .opt.o, $(objects))
+prf_objects = $(addsuffix .prf.o, $(objects))
+src_files = $(addsuffix .cpp, $(subst obj,src, $(objects)))
+
+dbg_objects += obj/test.o
+opt_objects += obj/main.opt.o
 
 # Compiler flags.
 
-common_cppflags = -O3 -Wall -Wextra -pedantic -fPIC --std=c++17 -pthread
-cppflags = $(common_cppflags) -DGSL_THROW_ON_CONTRACT_VIOLATION
+common_cppflags = -O3 -Wall -Wextra -pedantic -fPIC --std=c++17 -pthread -DGSL_THROW_ON_CONTRACT_VIOLATION
+cppflags = $(common_cppflags)
 opt_cppflags = $(common_cppflags) -DNDEBUG
 prf_cppflags = $(common_cppflags) -DNDEBUG -g -fno-inline
 incl = -I $(arbory_dir)/include
 
 # Common targets.
 
+all:
+
 clean:
 	@echo " -> Cleaning bin and obj directories"
 	@rm -rf obj/ bin/
 
-bin/main: $(opt_objects) obj/main.opt.o
+bin/main: $(opt_objects)
 	@mkdir -p bin
 	@echo " -> Linking $@ in release mode"
 	$(CC) -o $@ $^
 
-bin/test: $(dbg_objects) obj/test.o
+bin/test: $(dbg_objects)
 	@mkdir -p bin
 	@echo " -> Linking $@ in debug mode"
 	$(CC) -o $@ $^
@@ -55,44 +61,24 @@ bin/test: $(dbg_objects) obj/test.o
 test: bin/test
 	@bin/test
 
-# Compile source files of this project.
+# Compile source files in their own parent directory.
 
-obj/%.o: src/%.cpp
+$(dbg_objects):
 	@mkdir -p $(shell dirname $@)
-	@echo " -> Compiling $< in debug mode"
-	$(CC) $(incl) $(cppflags) -o $@ $< -c
+	@echo " -> Compiling $@ in debug mode"
+	$(CC) $(incl) $(cppflags) -o $@ $(subst .o,.cpp,$(subst obj,src,$@)) -c
 
-obj/%.opt.o: src/%.cpp
+$(opt_objects):
 	@mkdir -p $(shell dirname $@)
-	@echo " -> Compiling $< in release mode"
-	$(CC) $(incl) $(opt_cppflags) -o $@ $< -c
+	@echo " -> Compiling $@ in release mode"
+	$(CC) $(incl) $(opt_cppflags) -o $@ $(subst .opt.o,.cpp,$(subst obj,src,$@)) -c
 
-obj/%.prf.o: src/%.cpp
+$(prf_objects):
 	@mkdir -p $(shell dirname $@)
-	@echo " -> Compiling $< in profile mode"
-	$(CC) $(incl) $(prf_cppflags) -o $@ $< -c
+	@echo " -> Compiling $@ in profile mode"
+	$(CC) $(incl) $(prf_cppflags) -o $@ $(subst .prf.o,.cpp,$(subst obj,src,$@)) -c
 
-# Compile source files required from arbory.
-
-$(arbory_dir)/obj/%.o: $(arbory_dir)/src/%.cpp
-	@mkdir -p $(shell dirname $@)
-	@echo " -> Compiling $< in debug mode"
-	$(CC) $(incl) $(cppflags) -o $@ $< -c
-
-$(arbory_dir)/obj/%.opt.o: $(arbory_dir)/src/%.cpp
-	@mkdir -p $(shell dirname $@)
-	@echo " -> Compiling $< in release mode"
-	$(CC) $(incl) $(opt_cppflags) -o $@ $< -c
-
-$(arbory_dir)/obj/%.prf.o: $(arbory_dir)/src/%.cpp
-	@mkdir -p $(shell dirname $@)
-	@echo " -> Compiling $< in profile mode"
-	$(CC) $(incl) $(prf_cppflags) -o $@ $< -c
-
-# Dependencies (only works for local obj/*.o at the moment).
-
-src_files = $(addprefix src/, $(addsuffix .cpp, $(project_objects)))
-src_files += $(addprefix $(arbory_dir)/src/, $(addsuffix .cpp, $(arbory_objects)))
+# Dependencies of all compiled objects.
 
 obj/objects.d: $(src_files) src/main.cpp src/test.cpp
 	@mkdir -p obj

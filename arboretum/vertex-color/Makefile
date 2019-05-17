@@ -2,6 +2,5 @@
 all: bin/main
 project_objects = algorithm
 arbory_objects = struct/graph
+objects = ../maximum-clique/obj/algorithm
 include ../Makefile.common
-
-bin/main: ../maximum-clique/obj/algorithm.o

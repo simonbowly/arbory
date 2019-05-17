@@ -2,12 +2,7 @@
 #include <iostream>
 #include <vector>
 
-#include <arbory/backtracking.hpp>
-#include <arbory/recursion.hpp>
-#include <arbory/sense.hpp>
-
 #include "../include/algorithm.hpp"
-
 
 using namespace std;
 

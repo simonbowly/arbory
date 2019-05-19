@@ -12,33 +12,22 @@
 #include "types.hpp"
 
 
-// Branch decisions store the vertex being branched on (although at this point
-// no checking is actually needed).
-// DiveInclude represents a branch where :vertex is included in the clique.
-class DiveInclude {
+// Branch division includes/excludes the given vertex.
+class Rule {
     unsigned vertex;
 public:
-    explicit DiveInclude(unsigned v) : vertex(v) {}
-    unsigned get_vertex() const { return vertex; }
-};
-
-
-// Opposing branch, where :vertex is excluded from the clique.
-class DiveExclude {
-    unsigned vertex;
-public:
-    explicit DiveExclude(unsigned v) : vertex(v) {}
+    explicit Rule(unsigned v) : vertex(v) {}
     unsigned get_vertex() const { return vertex; }
 };
 
 
 // Stores how far the neighbours_end iterator was moved so the include branch
 // can be backtracked.
-class DiveIncludeResult {
+class IncludeResult {
     unsigned clique_move;
     unsigned neighbours_move;
 public:
-    explicit DiveIncludeResult(unsigned c, unsigned n) :
+    explicit IncludeResult(unsigned c, unsigned n) :
         clique_move(c), neighbours_move(n) {}
     unsigned get_clique_move() const { return clique_move; }
     unsigned get_neighbours_move() const { return neighbours_move; }
@@ -47,10 +36,10 @@ public:
 
 // Reversal is always the same for an exclude branch, no data needs to be
 // stored here.
-class DiveExcludeResult {
+class ExcludeResult {
     unsigned clique_move;
 public:
-    explicit DiveExcludeResult(unsigned c) : clique_move(c) {}
+    explicit ExcludeResult(unsigned c) : clique_move(c) {}
     unsigned get_clique_move() const { return clique_move; }
 };
 
@@ -109,12 +98,6 @@ public:
         graph(g), state_begin(b), clique_end(b),
         neighbours_end(e), state_end(e) {}
 
-    // Choose the branch vertex (first available) and return objects representing
-    // opposing include and exclude branches reachable from this state.
-    std::pair<DiveInclude, DiveExclude> branch_decision() const {
-        return std::make_pair(DiveInclude(*clique_end), DiveExclude(*clique_end));
-    }
-
     // Brings the next vertex to be branched on to the first candidate position.
     // The branch vertex is included by implication if possible.
     void sort_and_imply() {
@@ -137,8 +120,8 @@ public:
     // stores how far the partitioning operation moved the neighbours_end iterator
     // (i.e. how many vertices were rejected as a result of including the branch
     // vertex in the clique) to allow backtracking.
-    DiveIncludeResult branch(const DiveInclude& decision) {
-        Expects(*clique_end == decision.get_vertex());
+    std::pair<Rule, IncludeResult> branch() {
+        Rule decision(*clique_end);
         auto prev_clique_end = clique_end;
         auto prev_neighbours_end = neighbours_end;
         // Add the branch vertex to the clique and update candidate set.
@@ -149,18 +132,19 @@ public:
         // Expects(neighbours_end != prev_neighbours_end);
         // Look for implied inclusions, record pointer movements for backtracking.
         sort_and_imply();
-        return DiveIncludeResult(clique_end - prev_clique_end,
-                                 prev_neighbours_end - neighbours_end);
+        return std::make_pair(decision, IncludeResult(
+            clique_end - prev_clique_end,
+            prev_neighbours_end - neighbours_end));
     }
 
-    // Revert a call to branch(DiveInclude), transitioning to the parent state.
-    void backtrack(const DiveInclude&, const DiveIncludeResult& result) {
+    // Revert a call to branch(Rule), transitioning to the parent state.
+    void backtrack(const Rule&, const IncludeResult& result) {
         clique_end -= result.get_clique_move();
         neighbours_end += result.get_neighbours_move();
     }
 
     // Alter the state to check the exclude(v) branch.
-    DiveExcludeResult branch(const DiveExclude& decision) {
+    ExcludeResult branch_alternate(const Rule& decision) {
         Expects(*clique_end == decision.get_vertex());
         auto prev_clique_end = clique_end;
         // Move the branch vertex into the excluded set.
@@ -168,11 +152,11 @@ public:
         std::swap(*clique_end, *neighbours_end);
         // Look for implied inclusions, record pointer movement.
         sort_and_imply();
-        return DiveExcludeResult(clique_end - prev_clique_end);
+        return ExcludeResult(clique_end - prev_clique_end);
     }
 
-    // Reverts a call to branch(DiveExclude), transitioning to the parent state.
-    void backtrack(const DiveExclude& decision, const DiveExcludeResult& result) {
+    // Reverts a call to branch(Rule), transitioning to the parent state.
+    void backtrack(const Rule& decision, const ExcludeResult& result) {
         Expects(*neighbours_end == decision.get_vertex());
         clique_end -= result.get_clique_move();
         ++neighbours_end;

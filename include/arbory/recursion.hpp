@@ -35,12 +35,11 @@ std::optional<Sol> solve_recursive(State* state, Obj primal_bound) {
         return std::nullopt;
     if (state->is_leaf())
         return state->get_solution();
-    // Subproblem is incomplete, still improving and still feasible. Need to branch.
-    auto [first, second] = state->branch_decision();
+    // Subproblem is incomplete, still improving and still feasible.
     // Explore the right branch, backtrack and update primal bound.
-    auto first_result = state->branch(first);
+    auto [rule, first_result] = state->branch();
     auto best = solve_recursive<State, Sol, Obj, sense>(state, primal_bound);
-    state->backtrack(first, first_result);
+    state->backtrack(rule, first_result);
     if (best) {
         bool cond = opt::is_improvement(
             best->get_objective_value(), primal_bound);
@@ -50,9 +49,9 @@ std::optional<Sol> solve_recursive(State* state, Obj primal_bound) {
             return best;
     }
     // Explore the alternative branch, backtrack and return best result.
-    auto second_result = state->branch(second);
+    auto second_result = state->branch_alternate(rule);
     auto other = solve_recursive<State, Sol, Obj, sense>(state, primal_bound);
-    state->backtrack(second, second_result);
+    state->backtrack(rule, second_result);
     Expects((!best) || (primal_bound == best->get_objective_value()));
     if ((!best) || (other && opt::is_improvement(
             other->get_objective_value(), primal_bound)))

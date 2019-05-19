@@ -16,7 +16,7 @@
 #include "../../maximum-clique/include/algorithm.hpp"
 
 
-struct Merge {
+struct Rule {
     unsigned u;
     unsigned v;
 };
@@ -24,11 +24,6 @@ struct Merge {
 struct MergeResult {
     std::vector<unsigned> makeNeighboursOfU;
     std::vector<unsigned> addToClique;
-};
-
-struct Difference {
-    unsigned u;
-    unsigned v;
 };
 
 struct DifferenceResult {};
@@ -184,7 +179,7 @@ class Node {
         return u;
     }
 
-    MergeResult planMerge(const Merge& choice) const {
+    MergeResult planMerge(const Rule& choice) const {
         MergeResult plan;
         // Non-clique neighbours of v not already neighbours of u
         // either need neighbours updated or are clique candidates.
@@ -213,7 +208,7 @@ class Node {
         return plan;
     }
 
-    void executeMerge(const Merge& choice, const MergeResult& plan) {
+    void executeMerge(const Rule& choice, const MergeResult& plan) {
         state[choice.v] = choice.u;
         mergeCount += 1;
         for (const auto& w : plan.makeNeighboursOfU) {
@@ -235,7 +230,7 @@ class Node {
         RUN_INVARIANT_CHECK
     }
 
-    std::pair<Merge, Difference> branch_decision() const {
+    Rule branch_decision() const {
         // Note that vertex indices, instead of iterators into the data
         // structure, are used here. This is probably a performance hit
         // for a pure backtracking algorithm, but is required if we are
@@ -246,17 +241,14 @@ class Node {
         // variant?
         // Is it possible to prevent pointer invalidation in a reasonable
         // way?
-        Merge m;
-        Difference d;
-        m.v = getMaxDSATVertex();
-        m.u = getMergeCandidate(m.v);
-        d.v = m.v;
-        d.u = m.u;
-        Expects(branchChoiceIsValid(m));
-        return std::make_pair(m, d);
+        Rule r;
+        r.v = getMaxDSATVertex();
+        r.u = getMergeCandidate(r.v);
+        Expects(branchChoiceIsValid(r));
+        return r;
     }
 
-    bool branchChoiceIsValid(const Merge& choice) const {
+    bool branchChoiceIsValid(const Rule& choice) const {
         const auto& nv = neighbours[choice.v];
         return (
             choice.u < state.size()
@@ -267,14 +259,19 @@ class Node {
     }
 
     // Merge v into clique vertex u.
-    MergeResult branch(const Merge& choice) {
+    MergeResult branch(const Rule& choice) {
         const MergeResult& plan = planMerge(choice);
         executeMerge(choice, plan);
         return plan;
     }
 
+    std::pair<Rule, MergeResult> branch() {
+        auto rule = branch_decision();
+        return std::make_pair(rule, branch(rule));
+    }
+
     // Revert a call to diveMerge with the same arguments.
-    void backtrack(const Merge& choice, const MergeResult& plan) {
+    void backtrack(const Rule& choice, const MergeResult& plan) {
         // Neighbours must be removed before any states are changed so this
         // loop runs exactly as it did in the call to diveMerge().
         for (const auto& w : plan.addToClique) {
@@ -297,7 +294,7 @@ class Node {
     }
 
     // Add an edge between u and v.
-    DifferenceResult branch(const Difference& choice) {
+    DifferenceResult branch_alternate(const Rule& choice) {
         if (neighbours[choice.v].size() == cliqueSize - 1) {
             state[choice.v] = choice.v;
             cliqueSize += 1;
@@ -315,7 +312,7 @@ class Node {
     }
 
     // Revert a call to diveDifference with the same arguments.
-    void backtrack(const Difference& choice, const DifferenceResult&) {
+    void backtrack(const Rule& choice, const DifferenceResult&) {
         if (state[choice.v] == choice.v) {
             state[choice.v] = non_clique;
             cliqueSize -= 1;

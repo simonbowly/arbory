@@ -28,9 +28,7 @@ optional<MaximumCliqueSol> solve_recursive(const UndirectedGraph& graph) {
     auto state = root_state(graph, &initial_order);
     state.sort_and_imply();
     auto start = chrono::high_resolution_clock::now();
-    auto solution = solve_recursive<
-        MaximumCliqueState, MaximumCliqueSol,
-        unsigned int, Sense::Maximize>(&state);
+    auto solution = solve_recursive<MaximumCliqueState, Sense::Maximize>(&state);
     double runtime = std::chrono::duration<double, std::milli>
         (chrono::high_resolution_clock::now() - start)
         .count() / 1000;
@@ -44,8 +42,8 @@ vector<MaximumCliqueSol> solve_backtrack(const UndirectedGraph& graph, unsigned 
     auto state = root_state(graph, &initial_order);
     state.sort_and_imply();
     using MaxCliqueSolver = Solver<
-        MaximumCliqueState, MaximumCliqueSol, unsigned, Sense::Maximize,
-        unsigned, IncludeResult, unsigned>;
+        MaximumCliqueState, Sense::Maximize,
+        StaticBranching<unsigned, IncludeResult, unsigned>>;
     MaxCliqueSolver solver(&state);
     solver.solve(log_frequency);
     return solver.get_solutions();
@@ -56,9 +54,7 @@ vector<MaximumCliqueSol> solve_backtrack(const UndirectedGraph& graph, unsigned 
 vector<unsigned>::iterator solve_subgraph(const UndirectedGraph& graph, vector<unsigned>* vertices) {
     MaximumCliqueState state(graph, begin(*vertices), end(*vertices));
     state.sort_and_imply();
-    auto solution = solve_recursive<
-        MaximumCliqueState, MaximumCliqueSol,
-        unsigned int, Sense::Maximize>(&state);
+    auto solution = solve_recursive<MaximumCliqueState, Sense::Maximize>(&state);
     return partition(begin(*vertices), end(*vertices), [solution](unsigned u) {
         return find(begin(solution->get()), end(solution->get()), u) != end(solution->get());
     });

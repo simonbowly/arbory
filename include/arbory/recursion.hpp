@@ -2,6 +2,7 @@
 #define SRC_RECURSION_HPP
 
 #include <optional>
+#include <type_traits>
 #include <gsl/gsl_assert>
 
 #include "sense.hpp"
@@ -27,7 +28,7 @@
 //          get_objective_value()
 //
 template <typename State, typename Sol, typename Obj, Sense sense>
-std::optional<Sol> solve_recursive(State* state, Obj primal_bound) {
+std::optional<Sol> _solve_recursive(State* state, Obj primal_bound) {
     using opt = SenseOps<sense>;
     if (opt::can_be_pruned(*state, primal_bound))
         return std::nullopt;
@@ -38,7 +39,7 @@ std::optional<Sol> solve_recursive(State* state, Obj primal_bound) {
     // Subproblem is incomplete, still improving and still feasible.
     // Explore the right branch, backtrack and update primal bound.
     auto [rule, first_result] = state->branch();
-    auto best = solve_recursive<State, Sol, Obj, sense>(state, primal_bound);
+    auto best = _solve_recursive<State, Sol, Obj, sense>(state, primal_bound);
     state->backtrack(rule, first_result);
     if (best) {
         bool cond = opt::is_improvement(
@@ -50,7 +51,7 @@ std::optional<Sol> solve_recursive(State* state, Obj primal_bound) {
     }
     // Explore the alternative branch, backtrack and return best result.
     auto second_result = state->branch_alternate(rule);
-    auto other = solve_recursive<State, Sol, Obj, sense>(state, primal_bound);
+    auto other = _solve_recursive<State, Sol, Obj, sense>(state, primal_bound);
     state->backtrack(rule, second_result);
     Expects((!best) || (primal_bound == best->get_objective_value()));
     if ((!best) || (other && opt::is_improvement(
@@ -60,9 +61,11 @@ std::optional<Sol> solve_recursive(State* state, Obj primal_bound) {
 }
 
 
-template <typename State, typename Sol, typename Obj, Sense sense>
-std::optional<Sol> solve_recursive(State* state) {
-    return solve_recursive<State, Sol, Obj, sense>(
+template <typename State, Sense sense>
+auto solve_recursive(State* state) {
+    using Sol = typename std::invoke_result<decltype(&State::get_solution), State>::type;
+    using Obj = typename std::invoke_result<decltype(&Sol::get_objective_value), Sol>::type;
+    return _solve_recursive<State, Sol, Obj, sense>(
         state, initial_primal_bound<Obj, sense>());
 }
 

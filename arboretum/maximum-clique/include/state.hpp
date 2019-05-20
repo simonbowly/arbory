@@ -12,15 +12,6 @@
 #include "types.hpp"
 
 
-// Branch division includes/excludes the given vertex.
-class Rule {
-    unsigned vertex;
-public:
-    explicit Rule(unsigned v) : vertex(v) {}
-    unsigned get_vertex() const { return vertex; }
-};
-
-
 // Stores how far the neighbours_end iterator was moved so the include branch
 // can be backtracked.
 class IncludeResult {
@@ -31,16 +22,6 @@ public:
         clique_move(c), neighbours_move(n) {}
     unsigned get_clique_move() const { return clique_move; }
     unsigned get_neighbours_move() const { return neighbours_move; }
-};
-
-
-// Reversal is always the same for an exclude branch, no data needs to be
-// stored here.
-class ExcludeResult {
-    unsigned clique_move;
-public:
-    explicit ExcludeResult(unsigned c) : clique_move(c) {}
-    unsigned get_clique_move() const { return clique_move; }
 };
 
 
@@ -101,17 +82,14 @@ public:
     // Brings the next vertex to be branched on to the first candidate position.
     // The branch vertex is included by implication if possible.
     void sort_and_imply() {
-        while (true) {
-            if (is_leaf())
-                break;
+        while (clique_end != neighbours_end) {
             std::partial_sort(clique_end, clique_end + 1, neighbours_end, [this](unsigned u, unsigned v) {
                 return graph.degree(u) < graph.degree(v);
             });
-            bool noimply = std::any_of(clique_end + 1, neighbours_end, [this](unsigned v) {
-                return !graph.adjacent(*clique_end, v);
-            });
-            if (noimply)
-                break;
+            if (std::any_of(
+                clique_end + 1, neighbours_end,
+                [this](unsigned v) { return !graph.adjacent(*clique_end, v); }))
+                { break; }
             ++clique_end;
         }
     }
@@ -120,45 +98,45 @@ public:
     // stores how far the partitioning operation moved the neighbours_end iterator
     // (i.e. how many vertices were rejected as a result of including the branch
     // vertex in the clique) to allow backtracking.
-    std::pair<Rule, IncludeResult> branch() {
-        Rule decision(*clique_end);
+    std::pair<unsigned, IncludeResult> branch() {
         auto prev_clique_end = clique_end;
         auto prev_neighbours_end = neighbours_end;
         // Add the branch vertex to the clique and update candidate set.
         ++clique_end;
-        neighbours_end = std::partition(clique_end, neighbours_end, [this, decision](unsigned v) {
-            return graph.adjacent(decision.get_vertex(), v);
+        neighbours_end = std::partition(clique_end, neighbours_end, [this, prev_clique_end](unsigned v) {
+            return graph.adjacent(*prev_clique_end, v);
         });
         // Expects(neighbours_end != prev_neighbours_end);
         // Look for implied inclusions, record pointer movements for backtracking.
         sort_and_imply();
-        return std::make_pair(decision, IncludeResult(
+        return std::make_pair(*prev_clique_end, IncludeResult(
             clique_end - prev_clique_end,
             prev_neighbours_end - neighbours_end));
     }
 
-    // Revert a call to branch(Rule), transitioning to the parent state.
-    void backtrack(const Rule&, const IncludeResult& result) {
+    // Revert a call to branch(), transitioning to the parent state.
+    void backtrack(const unsigned& vertex, const IncludeResult& result) {
         clique_end -= result.get_clique_move();
         neighbours_end += result.get_neighbours_move();
+        Ensures(*clique_end == vertex);
     }
 
     // Alter the state to check the exclude(v) branch.
-    ExcludeResult branch_alternate(const Rule& decision) {
-        Expects(*clique_end == decision.get_vertex());
+    unsigned branch_alternate(const unsigned& vertex) {
+        Expects(*clique_end == vertex);
         auto prev_clique_end = clique_end;
         // Move the branch vertex into the excluded set.
         --neighbours_end;
         std::swap(*clique_end, *neighbours_end);
         // Look for implied inclusions, record pointer movement.
         sort_and_imply();
-        return ExcludeResult(clique_end - prev_clique_end);
+        return clique_end - prev_clique_end;
     }
 
-    // Reverts a call to branch(Rule), transitioning to the parent state.
-    void backtrack(const Rule& decision, const ExcludeResult& result) {
-        Expects(*neighbours_end == decision.get_vertex());
-        clique_end -= result.get_clique_move();
+    // Reverts a call to branch_alternate(), transitioning to the parent state.
+    void backtrack(const unsigned& vertex, const unsigned& clique_moved) {
+        Expects(*neighbours_end == vertex);
+        clique_end -= clique_moved;
         ++neighbours_end;
     }
 
@@ -178,7 +156,6 @@ public:
 
     // If at a leaf state, return the solution.
     MaximumCliqueSol get_solution() const {
-        Expects(is_leaf());
         return MaximumCliqueSol(state_begin, clique_end);
     }
 

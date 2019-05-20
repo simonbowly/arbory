@@ -44,8 +44,8 @@ vector<MaximumCliqueSol> solve_backtrack(const UndirectedGraph& graph, unsigned 
     auto state = root_state(graph, &initial_order);
     state.sort_and_imply();
     using MaxCliqueSolver = Solver<
-        MaximumCliqueState, MaximumCliqueSol, unsigned int, Sense::Maximize,
-        Rule, IncludeResult, ExcludeResult>;
+        MaximumCliqueState, MaximumCliqueSol, unsigned, Sense::Maximize,
+        unsigned, IncludeResult, unsigned>;
     MaxCliqueSolver solver(&state);
     solver.solve(log_frequency);
     return solver.get_solutions();

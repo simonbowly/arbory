@@ -259,7 +259,7 @@ class Node {
     }
 
     // Merge v into clique vertex u.
-    MergeResult branch(const Rule& choice) {
+    MergeResult _branch(const Rule& choice) {
         const MergeResult& plan = planMerge(choice);
         executeMerge(choice, plan);
         return plan;
@@ -267,7 +267,7 @@ class Node {
 
     std::pair<Rule, MergeResult> branch() {
         auto rule = branch_decision();
-        return std::make_pair(rule, branch(rule));
+        return std::make_pair(rule, _branch(rule));
     }
 
     // Revert a call to diveMerge with the same arguments.

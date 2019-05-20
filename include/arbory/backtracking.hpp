@@ -18,6 +18,7 @@
 // static and different backtrack methods are provided.
 template<typename Rule, typename Result, typename ResultAlternate>
 class StaticBranching {
+    static_assert(!std::is_same_v<Result, ResultAlternate>);
 public:
     class StackNode {
         Rule rule;
@@ -55,120 +56,51 @@ public:
 template<typename Rule, typename Result>
 class DynamicBranching {
 public:
-class StackNode {
-    Rule rule;
-    bool _alternate_evaluated;
-    Result result;
-public:
-    bool alternate_evaluated() const;
-    bool unwind_step();
-};
-};
-
-
-template <typename Rule, typename Res1, typename Res2>
-class StackNode {
-    std::pair<Rule, Res1> rule;
-    std::optional<Res2> result2;
- public:
-    StackNode(std::pair<Rule, Res1> r) : rule(r), result2(std::nullopt) {}
-    bool alternate_evaluated() const { return (bool) result2; }
-    // Only called by unwind_step()
-    const Rule & get_rule() const { return rule.first; }
-    const Res1 & get_branch1_result() const { return rule.second; }
-    const Res2 & get_branch2_result() const { return *result2; }
-    void set_branch_result(Res2 r2) { result2 = r2; }
+    class StackNode {
+        Rule rule;
+        Result result;
+        bool _alternate_evaluated;
+    public:
+        StackNode(std::pair<Rule, Result> r) :
+            rule(std::move(r.first)), result(std::move(r.second)),
+            _alternate_evaluated(false) {}
+        bool alternate_evaluated() const { return _alternate_evaluated; }
+        template<typename State>
+        bool unwind_step(State* state) {
+            state->backtrack(rule, result);
+            if (_alternate_evaluated) {
+                return true;
+            } else {
+                result = state->branch_alternate(rule);
+                _alternate_evaluated = true;
+                return false;
+            }
+        }
+    };
 };
 
 
-// variant lets us keep static-type controlled branching (do we actually want it?)
-// but the memory structure stays compact. If we end up calling the same backtrack()
-// function all the time, use a non-specialising subclass?
-//
-// NB unwind_and_branch_alternate() could be specialised
-// to use std::visit on the results variant.
-template <typename Rule, typename Res1, typename Res2>
-class StackNodeVariant {
-    Rule rule;
-    std::variant<Res1, Res2> results;
- public:
-    StackNodeVariant(std::pair<Rule, Res1> r) : rule(std::move(r.first)), results(std::move(r.second)) {}
-    const Rule & get_rule() const { return rule; }
-    const Res1 & get_branch1_result() const { return std::get<Res1>(results); }
-    bool alternate_evaluated() const { return std::holds_alternative<Res2>(results); }
-    void set_branch_result(Res2 r2) { results = r2; }
-    const Res2 & get_branch2_result() const { return std::get<Res2>(results); }
-    // could this work like a std::get<> equivalent?
-    // template<typename T>
-    // auto get_branch_result() const { return std::get<T>(results); }
-};
-
-
-// For dynamic branching (using the same type).
-// Would need a backtrack_alternate() in this case. Actually prefer the static
-// cases since it enforces some static checking of the control flow.
-// However in the case of "assign value to variable" branching, static stuff
-// doesn't make much sense.
-//
-// Possible method to use type overloading where backtrack() is always the same?
-//
-//      class Rule {
-//          unsigned variable;
-//          unsigned value;
-//      };
-//
-//      class BranchResult {
-//          unsigned unwind_implications;
-//      };
-//
-//      // both need constructors which call the parent
-//      class Result : public BranchResult {};
-//      class ResultAlternate : public BranchResult {};
-//
-//      class State {
-//          pair<Rule, Result> branch();
-//          ResultAlternate branch_alternate(const Rule& rule);
-//          // Don't need separate implementations for both backtracks.
-//          void backtrack(const Rule& rule, const BranchResult& res);
-//      }
-//
-// Better yet would be if the template algorithms could account for this case
-// without the user having to define the two dummy constructors in cases where they
-// do nothing special.
-//
-template <typename Rule, typename Result>
-class StackNodeDynamic {
-    Rule rule;
-    Result result;
-    bool _alternate_evaluated;
- public:
-    StackNodeDynamic(std::pair<Rule, Result> r) :
-        rule(std::move(r.first)), result(std::move(r.second)),
-        _alternate_evaluated(false) {}
-    const Rule & get_rule() const { return rule; }
-    const Result & get_branch_result() const { return result; }
-    bool alternate_evaluated() const { return _alternate_evaluated; }
-    void set_branch_result(Result r) { result = r; }
-};
-
-
-// Should sense/Sol/Obj be properties of the class?
-template <typename State, Sense sense, typename Branching>
+// Should sense be a property of the state class?
+template <typename State, Sense sense>
 class Solver {
-    // Types Rule/Res1/Res2 are only explicitly used to define StackElement
-    // type, so might as well pass StackElement type to give more control
-    // over branching?
-    // using StackElement = StackNode<Rule, Res1, Res2>;
-    using StackElement = typename Branching::StackNode;
     using opt = SenseOps<sense>;
     using Sol = typename std::invoke_result<decltype(&State::get_solution), State>::type;
     using Obj = typename std::invoke_result<decltype(&Sol::get_objective_value), Sol>::type;
+    // Determine whether static or dynamic branching should be used.
+    using br_rule = typename std::invoke_result<decltype(&State::branch), State>::type::first_type;
+    using br_res = typename std::invoke_result<decltype(&State::branch), State>::type::second_type;
+    using br_res_alt = typename std::invoke_result<decltype(&State::branch_alternate), State, br_rule>::type;
+    using StackElement = typename std::conditional<
+        std::is_same_v<br_res, br_res_alt>,
+        DynamicBranching<br_rule, br_res>,
+        StaticBranching<br_rule, br_res, br_res_alt>>::type::StackNode;
+
     State* state;
     std::vector<StackElement> stack;
     std::vector<Sol> solutions;
     Obj primal_bound;
 
- public:
+public:
     explicit Solver(State* s) : state(s), stack(), solutions(),
                         primal_bound(initial_primal_bound<Obj, sense>()) {}
 
